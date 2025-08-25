@@ -1,96 +1,123 @@
 // src/PainelAdmin.js
-
-import React, { useEffect, useState } from 'react';
-import { supabase } from './supabaseClient';
-import * as XLSX from 'xlsx';
+import React, { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+import { supabase } from "./supabaseClient";
 
 export default function PainelAdmin() {
   const [empresas, setEmpresas] = useState([]);
-  const [empresaSelecionada, setEmpresaSelecionada] = useState('');
-  const [mensagem, setMensagem] = useState('');
+  const [empresaId, setEmpresaId] = useState("");
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    async function carregarEmpresas() {
-      const { data, error } = await supabase.from('empresas').select('id, nome_empresa');
-      if (!error) setEmpresas(data);
-      else console.error('Erro ao carregar empresas:', error);
-    }
-    carregarEmpresas();
+    const run = async () => {
+      const { data } = await supabase
+        .from("empresas")
+        .select("id, nome_empresa")
+        .order("nome_empresa", { ascending: true });
+      setEmpresas(data || []);
+    };
+    run();
   }, []);
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !empresaSelecionada) {
-      alert('Selecione um arquivo e uma empresa.');
+  const parseSheet = (wb, name) => {
+    const ws = wb.Sheets[name];
+    if (!ws) return null;
+    // mesmo padrão usado hoje: 2D array
+    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+  };
+
+  const handleUpload = async () => {
+    if (!empresaId) {
+      setMsg("Selecione uma empresa.");
+      return;
+    }
+    if (!file) {
+      setMsg("Selecione um arquivo Excel (RESULTADOS.xlsx).");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const data = new Uint8Array(event.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+    try {
+      setBusy(true);
+      setMsg("");
 
-      const abaDRE = workbook.SheetNames.find(name => name.toUpperCase().includes('DRE'));
-      const abaINDICADORES = workbook.SheetNames.find(name => name.toUpperCase().includes('INDICADOR'));
+      const arrayBuffer = await file.arrayBuffer();
+      const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-      const dreSheet = workbook.Sheets[abaDRE];
-      const indicadoresSheet = workbook.Sheets[abaINDICADORES];
-
-      if (!dreSheet || !indicadoresSheet) {
-        setMensagem('A planilha deve conter as abas "DRE" e "INDICADORES".');
-        return;
+      // 1) DRE (planilha 'DRE') -> dre_resultados
+      const dreArr = parseSheet(wb, "DRE");
+      if (dreArr) {
+        await supabase.from("dre_resultados").insert([{
+          empresa_id: empresaId,
+          dados_json: dreArr
+        }]);
       }
 
-      const dreData = XLSX.utils.sheet_to_json(dreSheet, { header: 1, defval: '' });
-      const indicadoresData = XLSX.utils.sheet_to_json(indicadoresSheet, { header: 1, defval: '' });
-
-      const { error: erroDRE } = await supabase.from('dre_resultados').insert([
-        {
-          empresa_id: empresaSelecionada,
-          dados_json: dreData,
-          data_envio: new Date().toISOString(),
-        },
-      ]);
-
-      const { error: erroIndicadores } = await supabase.from('indicadores_resultados').insert([
-        {
-          empresa_id: empresaSelecionada,
-          dados_json: indicadoresData,
-          data_envio: new Date().toISOString(),
-        },
-      ]);
-
-      if (erroDRE || erroIndicadores) {
-        setMensagem('Erro ao salvar dados.');
-        console.error('Erro DRE:', erroDRE);
-        console.error('Erro Indicadores:', erroIndicadores);
-      } else {
-        setMensagem('Dados salvos com sucesso.');
+      // 2) Ponto de Equilíbrio (planilha 'INDICADORES') -> indicadores_resultados
+      const peArr = parseSheet(wb, "INDICADORES");
+      if (peArr) {
+        await supabase.from("indicadores_resultados").insert([{
+          empresa_id: empresaId,
+          dados_json: peArr
+        }]);
       }
-    };
 
-    reader.readAsArrayBuffer(file);
+      // 3) NOVO: Indicadores Extras (planilha 'INDICADORES_EXTRAS') -> indicadores_extras
+      const extrasArr = parseSheet(wb, "INDICADORES_EXTRAS");
+      if (extrasArr && extrasArr.length) {
+        await supabase.from("indicadores_extras").insert([{
+          empresa_id: empresaId,
+          dados_json: extrasArr
+        }]);
+      }
+
+      setMsg("Arquivo processado com sucesso!");
+    } catch (e) {
+      console.error(e);
+      setMsg("Erro ao processar planilha. Verifique o arquivo e tente novamente.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="container" style={{ padding: '2rem' }}>
-      <h2>Painel Administrativo</h2>
+    <div className="container">
+      <h1>Painel Administrativo</h1>
 
-      <label>Selecione a empresa:</label>
-      <select onChange={(e) => setEmpresaSelecionada(e.target.value)} value={empresaSelecionada}>
-        <option value="">-- Escolha uma empresa --</option>
-        {empresas.map((emp) => (
-          <option key={emp.id} value={emp.id}>{emp.nome_empresa}</option>
-        ))}
-      </select>
+      <div className="form-row">
+        <label>Selecione a empresa:</label>
+        <select
+          value={empresaId}
+          onChange={(e) => setEmpresaId(e.target.value)}
+        >
+          <option value="">-- Escolha uma empresa --</option>
+          {empresas.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nome_empresa}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <input type="file" accept=".xlsx, .xls" onChange={handleUpload} style={{ display: 'block', marginTop: '1rem' }} />
+      <div className="form-row">
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={(ev) => setFile(ev.target.files?.[0] ?? null)}
+        />
+        <button disabled={busy} onClick={handleUpload}>
+          {busy ? "Enviando..." : "Enviar"}
+        </button>
+      </div>
 
-      {mensagem && (
-        <p style={{ color: mensagem.includes('Erro') ? 'red' : 'green', marginTop: '1rem' }}>
-          {mensagem}
-        </p>
-      )}
+      {msg && <p>{msg}</p>}
+
+      <p style={{ marginTop: 16, opacity: 0.75 }}>
+        • A planilha deve conter as abas: <b>DRE</b>, <b>INDICADORES</b> (Ponto de
+        Equilíbrio) e <b>INDICADORES_EXTRAS</b> (Indicadores).  
+        • O conteúdo é salvo como matriz (linhas/colunas).
+      </p>
     </div>
   );
 }
