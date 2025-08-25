@@ -1,40 +1,41 @@
+// src/components/Navbar.js
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import "./navbar.css";
 
-export default function Navbar({ onLogout }) {
-  const { pathname } = useLocation();
-
-  const isActive = (match) => {
-    // marca ativo quando a URL atual contém o trecho informado
-    return pathname.includes(match) ? "active" : "";
-  };
-
+export default function Navbar() {
   return (
-    <nav className="navbar">
-      <Link to="/dashboard" className="brand">
-        Balanse • Painel
-      </Link>
+    <header className="navbar">
+      <div className="navbar__brand">Balanse • Painel</div>
 
-      <div className="links">
-        <Link to="/dashboard" className={isActive("/dashboard")}>
+      <nav className="navbar__menu">
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) =>
+            "navlink" + (isActive ? " navlink--active" : "")
+          }
+        >
           DRE
-        </Link>
+        </NavLink>
 
-        <Link to="/ponto-de-equilibrio" className={isActive("/ponto-de-equilibrio")}>
+        <NavLink
+          to="/ponto"
+          className={({ isActive }) =>
+            "navlink" + (isActive ? " navlink--active" : "")
+          }
+        >
           Ponto de Equilíbrio
-        </Link>
+        </NavLink>
 
-        <Link to="/indicadores" className={isActive("/indicadores")}>
+        <NavLink
+          to="/indicadores-extras"
+          className={({ isActive }) =>
+            "navlink" + (isActive ? " navlink--active" : "")
+          }
+        >
           Indicadores
-        </Link>
-
-        {onLogout && (
-          <button className="logout-btn" onClick={onLogout}>
-            Sair
-          </button>
-        )}
-      </div>
-    </nav>
+        </NavLink>
+      </nav>
+    </header>
   );
 }

@@ -1,74 +1,45 @@
-/* Barra superior */
+/* src/components/navbar.css */
+
+/* barra única */
 .navbar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  width: 100%;
-  padding: 12px 20px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb; /* cinza claro */
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 999;
 }
 
-/* Marca / logo */
-.navbar .brand {
+.navbar__brand {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.navbar__menu {
   display: flex;
-  align-items: center;
   gap: 8px;
-  font-weight: 700;
-  font-size: 18px;
-  color: #111827; /* slate-900 */
-  text-decoration: none;
 }
 
-/* Container dos links */
-.navbar .links {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Estilo base dos links */
-.navbar .links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+.navlink {
+  padding: 6px 10px;
   border-radius: 8px;
   text-decoration: none;
-  color: #374151;            /* slate-700 */
-  background: transparent;
-  transition: all .15s ease;
-  font-weight: 500;
+  color: #222;
+  background: #f2f2f2;
 }
 
-/* Hover */
-.navbar .links a:hover {
-  background: #f3f4f6;       /* slate-100 */
-  color: #1f2937;            /* slate-800 */
-}
-
-/* Link ativo */
-.navbar .links a.active {
-  color: #1d4ed8;            /* blue-700 */
-  background: #eef2ff;       /* indigo-50 */
-  border: 1px solid #c7d2fe; /* indigo-200 */
-}
-
-/* Botão de sair */
-.navbar .logout-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #ef4444; /* red-500 */
-  color: #b91c1c;            /* red-700 */
-  background: #fff1f2;       /* rose-50 */
-  cursor: pointer;
+.navlink--active {
+  color: #226;
+  background: #e7ecff;
   font-weight: 600;
 }
 
-.navbar .logout-btn:hover {
-  background: #ffe4e6;       /* rose-100 */
+/* (opcional) se alguma página ainda tiver um cabeçalho antigo com classe comum,
+   escondemos para não duplicar visualmente. Se não tiver, isso não afeta nada. */
+.top-actions, .page-header, .header-actions {
+  display: none !important;
 }
